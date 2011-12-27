@@ -40,4 +40,42 @@
         </dependencies>
     </dependencyManagement>
 
+    <distributionManagement>
+        <repository>
+            <id>i-develop.releases</id>
+            <name>Releases repository :: i-develop.be</name>
+            <url>http://www.i-develop.be/nexus/content/repositories/releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>i-develop.snapshots</id>
+            <name>Snapshot repository :: i-develop.be</name>
+            <url>http://www.i-develop.be/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>i-develop.snapshots</id>
+            <name>Public Snapshot repository</name>
+            <url>http://www.i-develop.be/nexus/content/repositories/public-snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
+        <repository>
+            <id>i-develop.releases</id>
+            <name>Public Releases repository</name>
+            <url>http://www.i-develop.be/nexus/content/repositories/public</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+    </repositories>
+
 </project>
