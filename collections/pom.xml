@@ -32,12 +32,12 @@
 
     </dependencies>
 
-
     <build>
         <plugins>
             <plugin>
                 <groupId>org.codehaus.gmaven</groupId>
                 <artifactId>gmaven-plugin</artifactId>
+                <version>1.3</version>
                 <executions>
                     <execution>
                         <goals>
