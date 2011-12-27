@@ -9,8 +9,8 @@ package be.idevelop.commons.collections
  */
 class BinarySearchTree<T extends Comparable> implements Collection<T> {
 
-    private Node<T> root
-    private Integer modCount
+    Node<T> root
+    Integer modCount
 
     BinarySearchTree() {
         root = null
@@ -167,131 +167,5 @@ class BinarySearchTree<T extends Comparable> implements Collection<T> {
     @Override
     void clear() {
         this.root = null
-    }
-
-    private static class Node<T extends Comparable> {
-
-        private Node<T> left
-        private Node<T> right
-        private T data
-
-        Node(T data) {
-            assert data
-
-            this.data = data
-            left = null
-            right = null
-        }
-
-
-        Node<T> find(T data) {
-            return (this.data == data) ? this :
-                ((this.left && data < this.data) ? this.left.find(data) :
-                    ((this.right && data > this.data) ? this.right.find(data) : null))
-        }
-
-        boolean add(T data) {
-            if (data < this.data) {
-                if (left) {
-                    left.add(data)
-                } else {
-                    left = new Node(data)
-                }
-                return true
-            } else if (data > this.data) {
-                if (right) {
-                    right.add(data)
-                } else {
-                    right = new Node(data)
-                }
-                return true
-            } else {
-                return false
-            }
-        }
-
-        boolean remove(Object o, Node parent) {
-            if (data < this.data) {
-                return left ? left.remove(data, this) : false
-            } else if (data > this.data) {
-                return right ? right.remove(data, this) : false
-            } else {
-                if (left && right) {
-                    this.data = right.minValue()
-                    right.remove(this.data, this)
-                } else if (parent.left == this) {
-                    parent.left = left ?: right
-                } else if (parent.right == this) {
-                    parent.right = left ?: right
-                }
-                return true;
-            }
-        }
-
-        T minValue() {
-            return left ? left.minValue() : data;
-        }
-
-        Integer size() {
-            return 1 + (left ? left.size() : 0) + (right ? right.size() : 0)
-        }
-
-        Node<T> findLeftMost() {
-            return left ? left.findLeftMost() : this;
-        }
-
-    }
-
-    private static class TreeIterator<T extends Comparable<T>> implements Iterator<T> {
-
-        private Integer expectedModCount
-
-        private Stack<BinarySearchTree.Node<T>> toVisit
-
-        private BinarySearchTree tree;
-
-        TreeIterator(BinarySearchTree tree) {
-            this.tree = tree
-            this.expectedModCount = tree.modCount
-
-            toVisit = new Stack<BinarySearchTree.Node<T>>()
-            if (tree.root) {
-                pushLeftNodes tree.root
-            }
-        }
-
-        @Override
-        boolean hasNext() {
-            !toVisit.empty()
-        }
-
-
-        @Override
-        T next() {
-            checkForModification()
-
-            BinarySearchTree.Node<T> node = toVisit.pop()
-            pushLeftNodes(node.right)
-            return node.data
-        }
-
-
-        private def pushLeftNodes(Node<T> node) {
-            if (node) {
-                this.toVisit.push(node)
-                pushLeftNodes node.left
-            }
-        }
-
-        @Override
-        void remove() {
-            throw new java.lang.UnsupportedOperationException("remove")
-        }
-
-        private void checkForModification() {
-            if (expectedModCount != tree.modCount) {
-                throw new ConcurrentModificationException()
-            }
-        }
     }
 }

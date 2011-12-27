@@ -21,14 +21,14 @@ class TimedCollectionWrapper<E> implements Collection<E> {
     TimedCollectionWrapper() {
         this.collection = []
 
-        this.queue = new ConcurrentLinkedQueue<TimedCollectionWrapper.TimedEntry>()
+        this.queue = new ConcurrentLinkedQueue<TimedEntry>()
     }
 
     TimedCollectionWrapper(Collection<E> collection) {
         assert collection
 
         this.collection = collection
-        this.queue = new ConcurrentLinkedQueue<TimedCollectionWrapper.TimedEntry>()
+        this.queue = new ConcurrentLinkedQueue<TimedEntry>()
     }
 
     @Override
@@ -149,18 +149,6 @@ class TimedCollectionWrapper<E> implements Collection<E> {
 
     void setMillisToRemainInCollection(Integer millisToRemainInCollection) {
         this.millisToRemainInCollection = millisToRemainInCollection
-    }
-
-    private static class TimedEntry {
-
-        LocalDateTime time
-        def value
-
-        TimedEntry(LocalDateTime time, value) {
-            this.time = time
-            this.value = value
-        }
-
     }
 
 }
