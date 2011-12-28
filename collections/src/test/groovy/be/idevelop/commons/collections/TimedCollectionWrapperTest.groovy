@@ -12,7 +12,6 @@ import static org.joda.time.LocalDateTime.now
  */
 class TimedCollectionWrapperTest extends Specification {
 
-
     def setupSpec() {
 
     }
@@ -49,12 +48,18 @@ class TimedCollectionWrapperTest extends Specification {
     def "test timeout reached"() {
         given:
         def collectionWrapper = new TimedCollectionWrapper<Integer>()
+        collectionWrapper.millisToRemainInCollection = 10000
 
+        // will expire after 10 sec
         collectionWrapper.add(1)
         collectionWrapper.add(2)
         collectionWrapper.add(3)
         collectionWrapper.add(4)
         collectionWrapper.add(5)
+
+        DateTimeUtils.setCurrentMillisFixed(now().plusSeconds(8).toDate().time)
+
+        // will still be there after 13 sec
         collectionWrapper.add(6)
         collectionWrapper.add(7)
         collectionWrapper.add(8)
@@ -63,17 +68,31 @@ class TimedCollectionWrapperTest extends Specification {
 
         assert collectionWrapper.size() == 10
 
-        // move time one hour forward -> no need to sleep in test
-        DateTimeUtils.setCurrentMillisFixed(now().plusHours(1).toDate().time)
-
         when:
-        def result = false
-
+        def found = true
+        def firstSize = 0
         (1..10).each {
-            result |= collectionWrapper.contains(it)
+            found &= collectionWrapper.contains(it)
+            firstSize = collectionWrapper.size()
+        }
+
+        DateTimeUtils.setCurrentMillisFixed(now().plusSeconds(3).toDate().time)
+
+        def notFound = false
+        def secondSize = 0
+        (6..10).each {
+            found &= collectionWrapper.contains(it)
+        }
+        (1..5).each {
+            found |= collectionWrapper.contains(it)
+            secondSize = collectionWrapper.size()
         }
 
         then:
-        !result
+        found
+        firstSize == 10
+
+        !notFound
+        secondSize == 5
     }
 }

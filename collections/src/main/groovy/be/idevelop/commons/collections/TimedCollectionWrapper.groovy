@@ -11,8 +11,8 @@ import static org.joda.time.LocalDateTime.now
  */
 class TimedCollectionWrapper<E> implements Collection<E> {
 
-    private Collection<E> collection
-    private Queue<TimedEntry> queue
+    private synchronized final Collection<E> collection
+    private synchronized final Queue<TimedEntry> queue
 
     private static final DEFAULT_MILLIS_TO_REMAIN_IN_COLLECTION = 60000
 
@@ -25,7 +25,7 @@ class TimedCollectionWrapper<E> implements Collection<E> {
     }
 
     TimedCollectionWrapper(Collection<E> collection) {
-        assert collection
+        assert (collection != null)
 
         this.collection = collection
         this.queue = new ConcurrentLinkedQueue<TimedEntry>()
@@ -107,6 +107,13 @@ class TimedCollectionWrapper<E> implements Collection<E> {
     void clear() {
         queue.clear()
         collection.clear()
+    }
+
+    @Override
+    public String toString() {
+        return "TimedCollectionWrapper{" +
+                "queue=" + queue +
+                '}';
     }
 
     private def addElement(E e) {

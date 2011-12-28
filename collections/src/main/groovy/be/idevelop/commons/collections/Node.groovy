@@ -12,7 +12,7 @@ private class Node<T extends Comparable> {
     T data
 
     Node(T data) {
-        assert data
+        assert (data != null)
 
         this.data = data
         left = null
@@ -51,17 +51,18 @@ private class Node<T extends Comparable> {
             return left ? left.remove(data, this) : false
         } else if (data > this.data) {
             return right ? right.remove(data, this) : false
-        } else {
+        } else if (data == this.data) {
             if (left && right) {
                 this.data = right.minValue()
                 right.remove(this.data, this)
-            } else if (parent.left == this) {
+            } else if (parent && parent.left == this) {
                 parent.left = left ?: right
-            } else if (parent.right == this) {
+            } else if (parent && parent.right == this) {
                 parent.right = left ?: right
             }
             return true;
         }
+        return false
     }
 
     T minValue() {
