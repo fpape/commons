@@ -13,6 +13,8 @@
         <groovy.version>1.8.5</groovy.version>
         <joda-time.version>2.0</joda-time.version>
         <servlet-api.version>2.5</servlet-api.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spock.version>0.5-groovy-1.8</spock.version>
         <spring.version>3.1.0.RELEASE</spring.version>
     </properties>

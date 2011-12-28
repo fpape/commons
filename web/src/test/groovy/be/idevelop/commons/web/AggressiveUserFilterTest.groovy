@@ -8,7 +8,6 @@ import org.joda.time.LocalDateTime
 import org.springframework.mock.web.MockFilterConfig
 import org.springframework.mock.web.MockHttpServletRequest
 import spock.lang.Specification
-import spock.lang.Unroll
 import static org.apache.commons.lang.RandomStringUtils.randomNumeric
 import static org.joda.time.LocalDateTime.now
 import static org.springframework.test.util.ReflectionTestUtils.getField
@@ -33,7 +32,6 @@ class AggressiveUserFilterTest extends Specification {
 
         then:
         1000 == getField(filter, 'millisBetweenCalls')
-        '/*' == getField(filter, 'urlPattern')
     }
 
     def "test init config uses FilterConfig when specified"() {
@@ -41,14 +39,12 @@ class AggressiveUserFilterTest extends Specification {
         AggressiveUserFilter filter = new AggressiveUserFilter()
         MockFilterConfig filterConfig = new MockFilterConfig('AggressiveUserFilter')
         filterConfig.addInitParameter(AggressiveUserFilter.MILLIS_BETWEEN_CALLS, String.valueOf(3000))
-        filterConfig.addInitParameter(AggressiveUserFilter.URL_PATTERN, '*.html, /**/*.jsp')
 
         when:
         filter.init(filterConfig);
 
         then:
         3000 == getField(filter, 'millisBetweenCalls')
-        '*.html, /**/*.jsp' == getField(filter, 'urlPattern')
     }
 
     def "test init config uses default when specified with invalid Integer"() {
@@ -62,19 +58,6 @@ class AggressiveUserFilterTest extends Specification {
 
         then:
         1000 == getField(filter, 'millisBetweenCalls')
-    }
-
-    def "test init config throws exception when url pattern is invalid"() {
-        given:
-        AggressiveUserFilter filter = new AggressiveUserFilter()
-        MockFilterConfig filterConfig = new MockFilterConfig('AggressiveUserFilter')
-        filterConfig.addInitParameter(AggressiveUserFilter.URL_PATTERN, 'this is not a pattern, I think')
-
-        when:
-        filter.init(filterConfig);
-
-        then:
-        thrown IllegalArgumentException
     }
 
     @SuppressWarnings(["GroovyPointlessArithmetic", "GroovyAssignabilityCheck"])
@@ -141,40 +124,9 @@ class AggressiveUserFilterTest extends Specification {
         3999 * response.sendError(429, _)
     }
 
-    @Unroll({"Url: $url, ContextRoot: $contextRoot, Pattern: $pattern, expected: $expected"})
-    def "test url pattern matches"() {
-        given:
-        AggressiveUserFilter filter = new AggressiveUserFilter()
-        def config = new MockFilterConfig('AggressiveUserFilter')
-        config.addInitParameter(AggressiveUserFilter.URL_PATTERN, pattern)
-        filter.init(config)
-
-        when:
-        def result = filter.matchesUrlPattern(url, contextRoot)
-
-        then:
-        result == expected
-
-        where:
-        url                          | contextRoot  | pattern      | expected
-        '/altiplano/url.html'        | '/altiplano' | '/*'         | true
-        '/altiplano/url.html'        | '/altiplano' | '/**/*.html' | true
-        '/altiplano/url.jsp'         | '/altiplano' | '/**/*.jsp'  | true
-        '/altiplano/path/url.jsp'    | '/altiplano' | '/**/*.jsp'  | true
-        '/url.jsp'                   | '/'          | '/**/*.jsp'  | true
-        '/path/url.jsp'              | '/'          | '/**/*.jsp'  | true
-        '/path/url.jsp'              | '/'          | '/*.html'    | false
-        '/path/url.html'             | '/'          | '/**/*.html' | true
-        '/path/deep/deeper/url.html' | '/'          | '/**/*.html' | true
-        '/url.html'                  | '/'          | '/**/*.html' | true
-        '/'                          | '/'          | ''           | true
-        ''                           | '/'          | ''           | true
-    }
-
     private MockHttpServletRequest generateServletHttpRequest() {
         def request = new MockHttpServletRequest()
         request.remoteAddr = randomNumeric(9)
-        request.requestURI = '/index.html'
         return request
     }
 }
