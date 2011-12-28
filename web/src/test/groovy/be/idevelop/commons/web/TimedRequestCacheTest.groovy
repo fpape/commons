@@ -4,7 +4,6 @@ import org.apache.commons.lang.RandomStringUtils
 import org.joda.time.DateTimeUtils
 import org.springframework.mock.web.MockHttpServletRequest
 import spock.lang.Specification
-import spock.lang.Stepwise
 import static be.idevelop.commons.web.TimedRequestCache.CACHE
 import static org.joda.time.LocalDateTime.now
 import static org.springframework.test.util.ReflectionTestUtils.setField
@@ -14,11 +13,11 @@ import static org.springframework.test.util.ReflectionTestUtils.setField
  *
  * @author steven
  */
-@Stepwise
 class TimedRequestCacheTest extends Specification {
 
     def setup() {
         setField(CACHE, 'initialized', false)
+        CACHE.clear()
     }
 
     def cleanup() {
