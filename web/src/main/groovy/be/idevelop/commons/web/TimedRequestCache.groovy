@@ -16,7 +16,7 @@ enum TimedRequestCache {
     private TimedCollectionWrapper timedCache
     private synchronized initialized = false;
 
-    TimedRequestCache() {
+    private TimedRequestCache() {
         timedCache = new TimedCollectionWrapper(new BinarySearchTree())
     }
 
@@ -28,13 +28,13 @@ enum TimedRequestCache {
     def contains(HttpServletRequest request) {
         checkInitialized()
 
-        return timedCache.contains(new TimedRequestCacheKey(request))
+        return timedCache.contains(new RequestKey(request))
     }
 
     def put(HttpServletRequest request) {
         checkInitialized()
 
-        def key = new TimedRequestCacheKey(request)
+        def key = new RequestKey(request)
         timedCache.add(key)
     }
 

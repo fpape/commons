@@ -131,6 +131,9 @@ class TimedCollectionWrapper<E> implements Collection<E> {
     }
 
     private insertTimedElement(LocalDateTime time, E e) {
+        if (queue.contains(e)) {
+            queue.remove() // STW: verify if this is painful on large queues.. look for alternative for queue?
+        }
         this.queue.add(new TimedEntry(time, e))
     }
 

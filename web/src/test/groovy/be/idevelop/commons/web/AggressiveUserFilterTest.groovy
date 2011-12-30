@@ -1,10 +1,10 @@
 package be.idevelop.commons.web
 
+import be.idevelop.commons.collections.TimedCollectionWrapper
 import javax.servlet.FilterChain
 import javax.servlet.http.HttpServletResponse
 import org.joda.time.DateTimeUtils
 import org.joda.time.Duration
-import org.joda.time.LocalDateTime
 import org.springframework.mock.web.MockFilterConfig
 import org.springframework.mock.web.MockHttpServletRequest
 import spock.lang.Specification
@@ -31,7 +31,8 @@ class AggressiveUserFilterTest extends Specification {
         filter.init(new MockFilterConfig('AggressiveUserFilter'))
 
         then:
-        1000 == getField(filter, 'millisBetweenCalls')
+        2000 == getField(filter, 'millisBetweenCalls')
+        10 == getField(filter, 'maxTooFastRequests')
     }
 
     def "test init config uses FilterConfig when specified"() {
@@ -39,12 +40,14 @@ class AggressiveUserFilterTest extends Specification {
         AggressiveUserFilter filter = new AggressiveUserFilter()
         MockFilterConfig filterConfig = new MockFilterConfig('AggressiveUserFilter')
         filterConfig.addInitParameter(AggressiveUserFilter.MILLIS_BETWEEN_CALLS, String.valueOf(3000))
+        filterConfig.addInitParameter(AggressiveUserFilter.MAX_TOO_FAST_REQUESTS, String.valueOf(20))
 
         when:
         filter.init(filterConfig);
 
         then:
         3000 == getField(filter, 'millisBetweenCalls')
+        20 == getField(filter, 'maxTooFastRequests')
     }
 
     def "test init config uses default when specified with invalid Integer"() {
@@ -52,16 +55,18 @@ class AggressiveUserFilterTest extends Specification {
         AggressiveUserFilter filter = new AggressiveUserFilter()
         MockFilterConfig filterConfig = new MockFilterConfig('AggressiveUserFilter')
         filterConfig.addInitParameter(AggressiveUserFilter.MILLIS_BETWEEN_CALLS, 'sads')
+        filterConfig.addInitParameter(AggressiveUserFilter.MAX_TOO_FAST_REQUESTS, 'asda')
 
         when:
         filter.init(filterConfig);
 
         then:
-        1000 == getField(filter, 'millisBetweenCalls')
+        2000 == getField(filter, 'millisBetweenCalls')
+        10 == getField(filter, 'maxTooFastRequests')
     }
 
     @SuppressWarnings(["GroovyPointlessArithmetic", "GroovyAssignabilityCheck"])
-    def "doing calls every 2 seconds handles request nicely"() {
+    def "doing calls every 3 seconds handles request nicely"() {
         given:
         AggressiveUserFilter filter = new AggressiveUserFilter()
         filter.init(new MockFilterConfig('AggressiveUserFilter'))
@@ -71,7 +76,7 @@ class AggressiveUserFilterTest extends Specification {
         when:
         (1..10).each {
             filter.doFilter(generateServletHttpRequest(), response, chain)
-            DateTimeUtils.setCurrentMillisFixed(now().plusSeconds(2).toDate().time)
+            DateTimeUtils.setCurrentMillisFixed(now().plusSeconds(3).toDate().time)
         }
 
         then:
@@ -80,7 +85,7 @@ class AggressiveUserFilterTest extends Specification {
     }
 
     @SuppressWarnings(["GroovyPointlessArithmetic", "GroovyAssignabilityCheck"])
-    def "doing calls every 0,2 seconds returns http error code 429"() {
+    def "doing calls every 0,2 seconds returns http error code 429 on the 10th requests"() {
         given:
         AggressiveUserFilter filter = new AggressiveUserFilter()
         filter.init(new MockFilterConfig('AggressiveUserFilter'))
@@ -89,15 +94,19 @@ class AggressiveUserFilterTest extends Specification {
         def request = generateServletHttpRequest()
 
         when:
-        (1..10).each {
+        (1..21).each {
             filter.doFilter(request, response, chain)
+            if (it % 10 == 0) {
+                DateTimeUtils.currentMillisFixed = now().plusSeconds(32).toDate().time
+            }
         }
 
         then:
-        1 * chain.doFilter(_, _)
+        12 * chain.doFilter(_, _)
         9 * response.sendError(429, _)
     }
 
+    @SuppressWarnings("GroovyAssignabilityCheck")
     def "test speed of 5000 calls"() {
         given:
         AggressiveUserFilter filter = new AggressiveUserFilter()
@@ -107,21 +116,45 @@ class AggressiveUserFilterTest extends Specification {
         def request = generateServletHttpRequest()
 
         when:
-        LocalDateTime start = now()
+        Date start = new Date()
         (1..5000).each {
-            if (it % 5) {
+            if (it % 5 == 0) {
                 filter.doFilter(request, response, chain)
             } else {
                 filter.doFilter(generateServletHttpRequest(), response, chain)
             }
+            if (it % 200 == 0) {
+                DateTimeUtils.currentMillisFixed = now().plusSeconds(32).toDate().time
+            }
         }
-        LocalDateTime end = now()
-        def duration = new Duration(start.toDate().time, end.toDate().time)
+        Date end = new Date()
+        def duration = new Duration(start.time, end.time)
 
         then:
-        duration.millis < 2000
-        1001 * chain.doFilter(_, _)
-        3999 * response.sendError(429, _)
+        duration.millis < 3000
+        4248 * chain.doFilter(_, _)
+        752 * response.sendError(429, _)
+    }
+
+    def "destroy clears cache"() {
+        given:
+        AggressiveUserFilter filter = new AggressiveUserFilter()
+        filter.init(new MockFilterConfig('AggressiveUserFilter'))
+        def response = Mock(HttpServletResponse)
+        def chain = Mock(FilterChain)
+        def request = generateServletHttpRequest()
+
+        (1..30).each {
+            filter.doFilter(request, response, chain)
+        }
+
+        when:
+        filter.destroy()
+
+        then:
+        ((TimedCollectionWrapper) getField(TimedRequestCache.CACHE, 'timedCache')).isEmpty()
+        ((TimedCollectionWrapper) getField(PunishedCache.JAIL, 'timedCache')).isEmpty()
+        ((Map) getField(RequestCounter.COUNTER, 'counterMap')).isEmpty()
     }
 
     private MockHttpServletRequest generateServletHttpRequest() {
