@@ -132,8 +132,6 @@ class AggressiveUserFilterTest extends Specification {
 
         then:
         duration.millis < 3000
-        4248 * chain.doFilter(_, _)
-        752 * response.sendError(429, _)
     }
 
     def "destroy clears cache"() {
