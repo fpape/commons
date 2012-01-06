@@ -2,6 +2,7 @@ package be.idevelop.commons.web
 
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+import org.springframework.util.AntPathMatcher
 import static be.idevelop.commons.web.PunishedCache.JAIL
 import static be.idevelop.commons.web.RequestCounter.COUNTER
 import static be.idevelop.commons.web.TimedRequestCache.CACHE
@@ -27,32 +28,75 @@ class AggressiveUserFilter implements Filter {
 
     private int maxTooFastRequests
 
+    static final String URL_PATTERN = "URL_PATTERN"
+
+    private static final String DEFAULT_URL_PATTERN = '/*'
+
+    private String urlPattern
+
+    static final String EXCLUDE_URL_PATTERN = "EXCLUDE_URL_PATTERN"
+
+    private static final String DEFAULT_EXCLUDE_URL_PATTERN = ''
+
+    private String excludeUrlPattern
+
+    private AntPathMatcher antPathMatcher = new AntPathMatcher()
+
     void init(FilterConfig filterConfig) throws ServletException {
         initMillisBetweenCalls(filterConfig)
         initMaxTooFastRequests(filterConfig)
+        initUrlPattern(filterConfig)
 
         CACHE.init(millisBetweenCalls)
     }
 
     void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         if (request instanceof HttpServletRequest && response instanceof HttpServletResponse) {
-            if (JAIL.isPunished(request)) {
-                showTheClientSoManners(response)
-                return
-            }
-            if (CACHE.contains(request)) {
-                if (shouldBePunished(request)) {
-                    JAIL.punish(request)
-                    showTheClientSoManners(response)
+            if (shouldFilter(request.servletPath)) {
+                if (JAIL.isPunished(request)) {
+                    showTheClientSomeManners(response)
                     return
                 }
+                if (CACHE.contains(request)) {
+                    if (shouldBePunished(request)) {
+                        JAIL.punish(request)
+                        showTheClientSomeManners(response)
+                        return
+                    }
+                }
+                CACHE.put(request)
             }
-            CACHE.put(request)
             chain.doFilter(request, response)
         }
     }
 
-    private showTheClientSoManners(HttpServletResponse response) {
+    boolean shouldFilter(String path) {
+        return isIncluded(path) && !isExcluded(path);
+    }
+
+    private boolean isIncluded(String path) {
+        return match(urlPattern, path)
+    }
+
+    private boolean isExcluded(String path) {
+        return match(excludeUrlPattern, path)
+    }
+
+    private boolean match(String pattern, String path) {
+        def splitPattern = pattern.split(',').collect {it -> it.trim()}
+        return match(splitPattern, path)
+    }
+
+    private boolean match(List<String> patterns, String path) {
+        for (String pattern: patterns) {
+            if (antPathMatcher.match(pattern, path)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private showTheClientSomeManners(HttpServletResponse response) {
         response.sendError(429, 'Too many requests')
         response.flushBuffer()
     }
@@ -93,4 +137,16 @@ class AggressiveUserFilter implements Filter {
         this.maxTooFastRequests = DEFAULT_MAX_TOO_FAST_REQUESTS
     }
 
+    private void initUrlPattern(FilterConfig filterConfig) {
+        if (filterConfig.getInitParameter(URL_PATTERN) != null) {
+            this.urlPattern = filterConfig.getInitParameter(URL_PATTERN)
+        } else {
+            this.urlPattern = DEFAULT_URL_PATTERN
+        }
+        if (filterConfig.getInitParameter(EXCLUDE_URL_PATTERN) != null) {
+            this.excludeUrlPattern = filterConfig.getInitParameter(EXCLUDE_URL_PATTERN)
+        } else {
+            this.excludeUrlPattern = DEFAULT_EXCLUDE_URL_PATTERN
+        }
+    }
 }

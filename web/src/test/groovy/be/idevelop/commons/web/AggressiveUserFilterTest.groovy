@@ -8,6 +8,7 @@ import org.joda.time.Duration
 import org.springframework.mock.web.MockFilterConfig
 import org.springframework.mock.web.MockHttpServletRequest
 import spock.lang.Specification
+import spock.lang.Unroll
 import static org.apache.commons.lang.RandomStringUtils.randomNumeric
 import static org.joda.time.LocalDateTime.now
 import static org.springframework.test.util.ReflectionTestUtils.getField
@@ -33,6 +34,8 @@ class AggressiveUserFilterTest extends Specification {
         then:
         2000 == getField(filter, 'millisBetweenCalls')
         10 == getField(filter, 'maxTooFastRequests')
+        '/*' == getField(filter, 'urlPattern')
+        '' == getField(filter, 'excludeUrlPattern')
     }
 
     def "test init config uses FilterConfig when specified"() {
@@ -41,6 +44,8 @@ class AggressiveUserFilterTest extends Specification {
         MockFilterConfig filterConfig = new MockFilterConfig('AggressiveUserFilter')
         filterConfig.addInitParameter(AggressiveUserFilter.MILLIS_BETWEEN_CALLS, String.valueOf(3000))
         filterConfig.addInitParameter(AggressiveUserFilter.MAX_TOO_FAST_REQUESTS, String.valueOf(20))
+        filterConfig.addInitParameter(AggressiveUserFilter.URL_PATTERN, '*.html')
+        filterConfig.addInitParameter(AggressiveUserFilter.EXCLUDE_URL_PATTERN, '/admin/*, *.xhtml')
 
         when:
         filter.init(filterConfig);
@@ -48,6 +53,8 @@ class AggressiveUserFilterTest extends Specification {
         then:
         3000 == getField(filter, 'millisBetweenCalls')
         20 == getField(filter, 'maxTooFastRequests')
+        '*.html' == getField(filter, 'urlPattern')
+        '/admin/*, *.xhtml' == getField(filter, 'excludeUrlPattern')
     }
 
     def "test init config uses default when specified with invalid Integer"() {
@@ -155,9 +162,37 @@ class AggressiveUserFilterTest extends Specification {
         ((Map) getField(RequestCounter.COUNTER, 'counterMap')).isEmpty()
     }
 
+    @Unroll({"Test filter path for $path -> should filter: $expected"})
+    def "test filter paths"() {
+        given:
+        AggressiveUserFilter filter = new AggressiveUserFilter()
+        def config = new MockFilterConfig('AggressiveUserFilter')
+        config.addInitParameter(AggressiveUserFilter.URL_PATTERN, '/, /**/*.html')
+        config.addInitParameter(AggressiveUserFilter.EXCLUDE_URL_PATTERN, '/admin/**, /**/*.xhtml')
+        filter.init(config)
+
+        when:
+        def result = filter.shouldFilter(path)
+
+        then:
+        result == expected
+
+        where:
+        path                     | expected
+        '/'                      | true
+        '/index.html'            | true
+        '/folder/index.html'     | true
+        '/folder/map/index.html' | true
+        '/index.xhtml'           | false
+        '/admin/index.html'      | false
+        '/admin/index.xhtml'     | false
+        '/admin/map/index.html'  | false
+    }
+
     private MockHttpServletRequest generateServletHttpRequest() {
         def request = new MockHttpServletRequest()
         request.remoteAddr = randomNumeric(9)
+        request.servletPath = '/'
         return request
     }
 }
