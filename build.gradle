@@ -1,0 +1,51 @@
+groovyVersion = '1.8.5'
+servletApiVersion = '2.5'
+springVersion = '3.1.0.RELEASE'
+spockVersion = '0.5-groovy-1.8'
+jodaTimeVersion = '2.0'
+
+libs = [
+        groovy: "org.codehaus.groovy:groovy-all:$groovyVersion",
+        spock: "org.spockframework:spock-core:$spockVersion",
+        jodaTime: "joda-time:joda-time:$jodaTimeVersion",
+        servletApi: "javax.servlet:servlet-api:$servletApiVersion"
+]
+
+allprojects {
+    group = 'be.idevelop.commons'
+    version = '1.0-SNAPSHOT'
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'groovy'
+
+    dependencies {
+        testCompile libs.spock
+        groovy libs.groovy
+    }
+}
+
+project(':collections') {
+    dependencies {
+        compile libs.jodaTime
+    }
+}
+
+project(':web') {
+    dependencies {
+        compile project(':collections')
+        compile libs.jodaTime
+        compile libs.servletApi
+        compile "org.springframework:spring-core:$springVersion"
+        testCompile "org.springframework:spring-test:$springVersion"
+        testCompile "commons-lang:commons-lang:2.6"
+    }
+}
+
+task wrap(type: Wrapper) {
+    gradleVersion = "1.0-milestone-6"
+}
